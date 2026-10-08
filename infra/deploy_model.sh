@@ -11,7 +11,7 @@ set -e
 cd /opt/pdm
 git pull --ff-only
 sed -i "s|^PDM_MODEL_URI=.*|PDM_MODEL_URI=$MODEL_URI|" .env
-docker compose -f docker-compose.aws.yml up -d --build api
-docker compose -f docker-compose.aws.yml exec -T api python -m pdm.register "$MODEL_URI"
+docker compose -f docker-compose.aws.yml up -d --build api </dev/null
+docker compose -f docker-compose.aws.yml exec -T api python -m pdm.register "$MODEL_URI" </dev/null
 EOF
 echo "API: http://$EC2_IP:8000/docs | MLflow: http://$EC2_IP:5000"
