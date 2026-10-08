@@ -1,5 +1,5 @@
 # Roda na EC2. Variáveis vêm de /opt/pdm/.env (gerado pelo user data):
-#   RDS_HOST, DB_PASSWORD, BUCKET, AWS_DEFAULT_REGION, PDM_MODEL_URI
+#   PUBLIC_IP, RDS_HOST, DB_PASSWORD, BUCKET, AWS_DEFAULT_REGION, PDM_MODEL_URI
 services:
   mlflow:
     build: { context: ., dockerfile: Dockerfile.mlflow }
@@ -12,6 +12,8 @@ services:
       AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION}
       # MLflow 3 só aceita Host localhost/IP privado por padrão; aqui a proteção é o security group
       MLFLOW_SERVER_ALLOWED_HOSTS: "*"
+      # a UI faz POST com Origin = endereço público; sem isso o MLflow 3 responde 403 (request error)
+      MLFLOW_SERVER_CORS_ALLOWED_ORIGINS: "http://${PUBLIC_IP}:5000"
       # executor de jobs do MLflow 3 (não usado aqui) sobe vários processos e não cabe em 1 GB
       MLFLOW_SERVER_ENABLE_JOB_EXECUTION: "false"
     ports: ["5000:5000"]

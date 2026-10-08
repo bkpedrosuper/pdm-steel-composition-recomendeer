@@ -24,7 +24,11 @@ chmod +x /usr/local/lib/docker/cli-plugins/docker-buildx
 
 git clone __REPO_URL__ /opt/pdm
 cd /opt/pdm
+# IP público da própria máquina (IMDSv2): origem que a UI do MLflow precisa aceitar
+IMDS_TOKEN=$(curl -sX PUT http://169.254.169.254/latest/api/token -H "X-aws-ec2-metadata-token-ttl-seconds: 60")
+PUBLIC_IP=$(curl -s -H "X-aws-ec2-metadata-token: $IMDS_TOKEN" http://169.254.169.254/latest/meta-data/public-ipv4)
 cat > .env <<EOF
+PUBLIC_IP=$PUBLIC_IP
 BUCKET=__BUCKET__
 RDS_HOST=__RDS_HOST__
 DB_PASSWORD=__DB_PASSWORD__
