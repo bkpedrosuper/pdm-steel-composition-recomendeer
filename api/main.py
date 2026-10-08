@@ -4,23 +4,35 @@ GET  /health     -> status
 POST /predict    -> propriedades previstas para uma composição
 POST /recommend  -> composições recomendadas para propriedades-alvo
 
-Rodar: uvicorn api.main:app --reload   (com PYTHONPATH=src)
+Rodar: uvicorn api.main:app --reload
+Modelo servido: $PDM_MODEL_URI (em produção, models:/pdm-surrogate@champion).
 """
+import os
 from functools import lru_cache
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
-from pdm import load_config
+from pdm import REPO_ROOT, load_config
+from pdm.artifacts import describe_model_uri
 from pdm.optimize import recommend
 from pdm.predictor import SurrogatePredictor
 
 app = FastAPI(title="PDM Remake: Steel Composition Recommender")
 
 
+MODEL_URI = os.environ.get("PDM_MODEL_URI", str(REPO_ROOT / "artifacts" / "model"))
+
+
 @lru_cache
 def get_predictor() -> SurrogatePredictor:
-    return SurrogatePredictor()
+    # carregado uma vez por processo: depois de promover, recrie o container para recarregar
+    return SurrogatePredictor(MODEL_URI)
+
+
+@lru_cache
+def served_model() -> str:
+    return describe_model_uri(MODEL_URI)   # ex.: "pdm-surrogate v2 (@champion)"
 
 
 class PredictRequest(BaseModel):
@@ -37,7 +49,7 @@ class RecommendRequest(BaseModel):
 @app.get("/health")
 def health():
     p = get_predictor()
-    return {"status": "ok", "inputs": len(p.inputs), "targets": p.targets}
+    return {"status": "ok", "modelo": served_model(), "inputs": len(p.inputs), "targets": p.targets}
 
 
 @app.post("/predict")

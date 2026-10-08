@@ -20,6 +20,19 @@ def tracking_uri() -> str:
     return os.environ.get("MLFLOW_TRACKING_URI", f"sqlite:///{(REPO_ROOT / 'mlflow.db').as_posix()}")
 
 
+def describe_model_uri(uri: str | Path) -> str:
+    """Texto legível do modelo: para models:/nome@alias, mostra qual versão o alias aponta."""
+    uri = str(uri)
+    if uri.startswith("models:/") and "@" in uri:
+        import mlflow
+        from mlflow import MlflowClient
+
+        mlflow.set_tracking_uri(tracking_uri())
+        name, alias = uri.removeprefix("models:/").split("@", 1)
+        return f"{name} v{MlflowClient().get_model_version_by_alias(name, alias).version} (@{alias})"
+    return uri
+
+
 def resolve_model_dir(uri: str | Path) -> Path:
     uri = str(uri)
     if uri.startswith("models:/"):

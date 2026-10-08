@@ -5,6 +5,7 @@ no Model Registry (v1, v2, ...). Na tabela runs: uma linha por tipo de aço x sa
 
 Uso:
     python -m pdm.register artifacts/model                       # treino local
+    python -m pdm.register artifacts/model --alias challenger    # já marca como candidata
     python -m pdm.register s3://bucket/jobs/<job>/output/model.tar.gz   # job da SageMaker
 
 MLFLOW_TRACKING_URI: servidor MLflow (padrão: sqlite local, mlflow.db)
@@ -15,6 +16,7 @@ import json
 
 import mlflow
 import pandas as pd
+from mlflow import MlflowClient
 from mlflow.models import infer_signature
 from mlflow.pyfunc import log_model
 
@@ -31,7 +33,7 @@ def input_example(model_dir) -> pd.DataFrame:
     return pd.DataFrame([{c: (lo[c] + hi[c]) / 2 for c in meta["inputs"]}])
 
 
-def register(model_uri: str) -> str:
+def register(model_uri: str, alias: str | None = None) -> str:
     model_dir = resolve_model_dir(model_uri)
     m = json.loads((model_dir / "metrics.json").read_text(encoding="utf-8"))
     summary = pd.DataFrame(m["cv_summary"])
@@ -65,14 +67,19 @@ def register(model_uri: str) -> str:
                           tempo_treino=m["tempo_treino"], versao_dados=m["versao_dados"],
                           versao_modelo=f"{MODEL_NAME}/v{version}")
     n = save_run_metrics(rows)
-    print(f"\nrun {run.info.run_id} -> modelo {MODEL_NAME} versão {version}; {n} linhas na tabela runs")
+    if alias:
+        MlflowClient().set_registered_model_alias(MODEL_NAME, alias, str(version))
+    tag = f" (@{alias})" if alias else ""
+    print(f"\nrun {run.info.run_id} -> modelo {MODEL_NAME} versão {version}{tag}; {n} linhas na tabela runs")
     return run.info.run_id
 
 
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("model_uri", help="pasta local ou s3://.../model.tar.gz")
-    register(parser.parse_args().model_uri)
+    parser.add_argument("--alias", help="alias para a nova versão, ex.: challenger")
+    args = parser.parse_args()
+    register(args.model_uri, args.alias)
 
 
 if __name__ == "__main__":
