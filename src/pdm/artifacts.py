@@ -35,7 +35,8 @@ def _from_mlflow(uri: str) -> Path:
 
     mlflow.set_tracking_uri(tracking_uri())
     local = Path(download_artifacts(artifact_uri=uri))
-    return local / "artifacts" / "model"   # onde o pdm.register guardou os arquivos do surrogate
+    # o pdm.register guarda os arquivos do surrogate em artifacts/<nome da pasta de origem>/
+    return next((local / "artifacts").rglob("model.pt")).parent
 
 
 def _from_s3(uri: str) -> Path:
