@@ -22,6 +22,7 @@ services:
       --artifacts-destination /mlartifacts --serve-artifacts
     environment:
       MLFLOW_SERVER_ALLOWED_HOSTS: "*"   # MLflow 3 bloqueia Host fora de localhost/IP privado
+      MLFLOW_SERVER_ENABLE_JOB_EXECUTION: "false"   # executor de jobs não usado neste projeto
     volumes: [mlartifacts:/mlartifacts]
     ports: ["5000:5000"]
     depends_on: [postgres]
