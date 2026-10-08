@@ -10,6 +10,7 @@ uvicorn
 sqlalchemy
 psycopg2-binary
 boto3
+botocore[crt]          # necessário para credenciais do `aws login`
 pyyaml
 joblib
 pytest

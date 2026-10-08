@@ -15,3 +15,6 @@ __pycache__/
 .env
 infra/.aws_outputs
 infra/*.pem
+
+# logs locais (contêm IP e endereços)
+*.log

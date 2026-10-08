@@ -15,6 +15,12 @@ mkdir -p /usr/local/lib/docker/cli-plugins
 curl -sSL "https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64" \
   -o /usr/local/lib/docker/cli-plugins/docker-compose
 chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+# o buildx do Amazon Linux é antigo demais para o `docker compose build` (exige >= 0.17)
+curl -sSL https://api.github.com/repos/docker/buildx/releases/latest -o /tmp/buildx.json
+BUILDX_VERSION=$(grep -m1 '"tag_name"' /tmp/buildx.json | cut -d'"' -f4)
+curl -sSL "https://github.com/docker/buildx/releases/download/${BUILDX_VERSION}/buildx-${BUILDX_VERSION}.linux-amd64" \
+  -o /usr/local/lib/docker/cli-plugins/docker-buildx
+chmod +x /usr/local/lib/docker/cli-plugins/docker-buildx
 
 git clone __REPO_URL__ /opt/pdm
 cd /opt/pdm
