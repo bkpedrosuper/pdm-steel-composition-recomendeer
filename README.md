@@ -70,3 +70,25 @@ bash infra/teardown.sh                     # apaga tudo
 - **Escopo do otimizador:** a busca fica dentro do mínimo e máximo de cada variável no treino. Se o alvo pedido estiver fora do domínio, o sistema avisa em vez de bloquear.
 - **O treino não depende de rede:** o job da SageMaker só grava `metrics.json` junto do modelo, e o registro (MLflow e RDS) acontece dentro da VPC, na EC2. Assim nem o MLflow nem o RDS ficam expostos à internet.
 - **Próximos passos:** ensemble de redes, arquivo de diversidade por entropia de Shannon no otimizador, retreino mensal agendado e monitoramento de drift (PSI).
+
+## Ciclo de uma nova versão (local → produção)
+
+```bash
+# 1. experimente local (MLflow local, mlflow.db)
+python -m pdm.train                                   # depois de mudar src/pdm/config.yaml
+python -m pdm.register artifacts/model --alias challenger
+python -m pdm.promote <v> --dry-run                   # compara com o champion local
+python -m pdm.optimize --LE 243 --LR 355 --AL 38.1 --model models:/pdm-surrogate@challenger
+
+# 2. gostou? versione a mudança (o modelo de produção sempre vem de código no git)
+git commit -am "..." && git push
+
+# 3. treine na nuvem e registre como candidata em produção (a API não muda)
+bash infra/train_on_ec2.sh                            # imprime o s3://.../model.tar.gz
+bash infra/register_model.sh s3://.../model.tar.gz    # vira @challenger no MLflow da nuvem
+
+# 4. compare no MLflow da nuvem e promova; o gate reprova se o MAE piorar > 2%
+bash infra/promote.sh <v> --dry-run
+bash infra/promote.sh <v>                             # @champion -> <v>, recarrega a API
+bash infra/promote.sh <v anterior> --force            # rollback
+```
