@@ -3,6 +3,7 @@
 # Uso: bash infra/deploy_model.sh s3://pdm-remake-<conta>/jobs/<job>/output/model.tar.gz
 set -euo pipefail
 MODEL_URI="${1:?informe o s3://.../model.tar.gz}"
+source infra/load_env.sh
 source infra/.aws_outputs
 
 ssh -o StrictHostKeyChecking=accept-new -i infra/pdm-key.pem "ec2-user@$EC2_IP" bash -s <<EOF

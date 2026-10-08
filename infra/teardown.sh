@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Apaga tudo que o setup_aws.sh criou, para não gerar custo.
 set -uo pipefail
+source infra/load_env.sh
 source infra/.aws_outputs
 export AWS_DEFAULT_REGION="$REGION"
 

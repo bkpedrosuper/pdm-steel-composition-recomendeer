@@ -9,8 +9,7 @@
 ## 1. Infraestrutura
 
 ```bash
-export DB_PASSWORD='troque-por-uma-senha-forte'
-export REPO_URL='https://github.com/<voce>/pdm-remake.git'
+cp .env.example .env     # edite o .env: DB_PASSWORD (só letras e números, 12+) e REPO_URL
 bash infra/setup_aws.sh
 ```
 Cria o bucket `pdm-remake-<conta>`, os papéis IAM `pdm-sagemaker-role` e `pdm-ec2-role`, os security groups (portas 22, 5000 e 8000 abertas **só para o seu IP**, e o RDS acessível só pela EC2 e pelo seu IP), o RDS Postgres `pdm-db` e a EC2 `pdm-server`. Grava os endereços em `infra/.aws_outputs`. A EC2 leva ~5 min para subir o MLflow em `http://<EC2_IP>:5000`.

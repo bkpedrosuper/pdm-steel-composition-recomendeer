@@ -1,16 +1,17 @@
 #!/usr/bin/env bash
 # Cria a infraestrutura do PDM Remake com a AWS CLI (rodar no Git Bash, a partir da raiz do repo).
 #
-# Pré-requisitos: `aws configure` feito; variáveis:
-#   export DB_PASSWORD='uma-senha-forte'          # senha do RDS (não vai para o git)
-#   export REPO_URL='https://github.com/<voce>/pdm-remake.git'   # repo público, clonado pela EC2
+# Pré-requisitos: `aws configure` feito e um arquivo .env na raiz (modelo: .env.example)
+# com DB_PASSWORD (senha do RDS) e REPO_URL (repo público no GitHub, clonado pela EC2).
 #
 # Cria: bucket S3, papéis IAM (SageMaker e EC2), security groups, RDS Postgres (db.t4g.micro),
 #       par de chaves e uma EC2 t3.small que sobe o MLflow. Saídas em infra/.aws_outputs.
 set -euo pipefail
+source infra/load_env.sh
 
-: "${DB_PASSWORD:?defina DB_PASSWORD}"
-: "${REPO_URL:?defina REPO_URL}"
+: "${DB_PASSWORD:?defina DB_PASSWORD no .env}"
+: "${REPO_URL:?defina REPO_URL no .env}"
+[[ "$DB_PASSWORD" =~ ^[A-Za-z0-9]{12,}$ ]] || { echo "DB_PASSWORD: use só letras e números, mínimo 12"; exit 1; }
 REGION="${AWS_REGION:-us-east-1}"
 export AWS_DEFAULT_REGION="$REGION"
 ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
