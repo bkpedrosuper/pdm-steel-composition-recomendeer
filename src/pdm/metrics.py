@@ -25,7 +25,8 @@ def regression_report(y_true: np.ndarray, y_pred: np.ndarray, targets: list[str]
 
 def report_by_type(df: pd.DataFrame, pred: np.ndarray, targets: list[str]) -> pd.DataFrame:
     """Relatório geral (tipo_aco = ALL) e por tipo de aço."""
-    parts = [regression_report(df[targets].values, pred, targets).assign(tipo_aco="ALL")]
+    y = df.loc[:, targets].to_numpy()
+    parts = [regression_report(y, pred, targets).assign(tipo_aco="ALL")]
     for tipo, idx in df.groupby("tipo").indices.items():
-        parts.append(regression_report(df[targets].values[idx], pred[idx], targets).assign(tipo_aco=tipo))
+        parts.append(regression_report(y[idx], pred[idx], targets).assign(tipo_aco=str(tipo)))
     return pd.concat(parts, ignore_index=True)

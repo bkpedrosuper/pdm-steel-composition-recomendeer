@@ -41,53 +41,60 @@ class Trainer:
         tcfg = self.cfg["train"]
         fit_df, stop_df = self._early_stop_split(df)
 
-        self.x_scaler.fit(fit_df[self.inputs].values)
-        self.y_scaler.fit(fit_df[self.targets].values)
+        self.x_scaler.fit(fit_df.loc[:, self.inputs].to_numpy())
+        self.y_scaler.fit(fit_df.loc[:, self.targets].to_numpy())
         x_fit, y_fit = self._tensors(fit_df)
         x_stop, y_stop = self._tensors(stop_df)
 
         mcfg = self.cfg["model"]
-        self.model = MLP(len(self.inputs), len(self.targets), mcfg["hidden"], mcfg["dropout"])
-        opt = torch.optim.Adam(self.model.parameters(), lr=tcfg["lr"])
+        model = MLP(len(self.inputs), len(self.targets), mcfg["hidden"], mcfg["dropout"])
+        opt = torch.optim.Adam(model.parameters(), lr=tcfg["lr"])
         loss_fn = nn.MSELoss()
 
-        best_loss, best_state, bad_epochs = np.inf, None, 0
+        best_loss, best_state, bad_epochs = np.inf, copy.deepcopy(model.state_dict()), 0
         for epoch in range(tcfg["max_epochs"]):
-            self.model.train()
+            model.train()
             for idx in torch.randperm(len(x_fit)).split(tcfg["batch_size"]):
                 opt.zero_grad()
-                loss = loss_fn(self.model(x_fit[idx]), y_fit[idx])
+                loss = loss_fn(model(x_fit[idx]), y_fit[idx])
                 loss.backward()
                 opt.step()
 
-            self.model.eval()
+            model.eval()
             with torch.no_grad():
-                stop_loss = loss_fn(self.model(x_stop), y_stop).item()
+                stop_loss = loss_fn(model(x_stop), y_stop).item()
             self.history.append({"epoch": epoch, "stop_loss": stop_loss})
 
             if stop_loss < best_loss:
-                best_loss, best_state, bad_epochs = stop_loss, copy.deepcopy(self.model.state_dict()), 0
+                best_loss, best_state, bad_epochs = stop_loss, copy.deepcopy(model.state_dict()), 0
             else:
                 bad_epochs += 1
                 if bad_epochs >= tcfg["patience"]:
                     break
 
-        self.model.load_state_dict(best_state)
+        model.load_state_dict(best_state)
+        self.model = model
         return self
+
+    def _fitted(self) -> MLP:
+        if self.model is None:
+            raise RuntimeError("chame fit() antes de predict()/save()")
+        return self.model
 
     # ---------- inferência ----------
     def predict(self, x: np.ndarray) -> np.ndarray:
-        self.model.eval()
+        model = self._fitted()
+        model.eval()
         with torch.no_grad():
             xt = torch.tensor(self.x_scaler.transform(x), dtype=torch.float32)
-            return self.y_scaler.inverse_transform(self.model(xt).numpy())
+            return self.y_scaler.inverse_transform(model(xt).numpy())
 
     # ---------- persistência ----------
     def save(self, out_dir: str | Path, train_df: pd.DataFrame) -> None:
         """Salva pesos, escalonadores e o domínio do treino (usado pelo otimizador e pelo aviso)."""
         out = Path(out_dir)
         out.mkdir(parents=True, exist_ok=True)
-        torch.save(self.model.state_dict(), out / "model.pt")
+        torch.save(self._fitted().state_dict(), out / "model.pt")
         joblib.dump({"x": self.x_scaler, "y": self.y_scaler}, out / "scalers.joblib")
         cols = self.inputs + self.targets
         domain = {"min": train_df[cols].min().to_dict(), "max": train_df[cols].max().to_dict()}

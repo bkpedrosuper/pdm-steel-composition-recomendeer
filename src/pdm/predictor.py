@@ -5,6 +5,7 @@ from pathlib import Path
 
 import joblib
 import numpy as np
+from numpy.typing import ArrayLike
 import torch
 
 from pdm import REPO_ROOT
@@ -29,7 +30,7 @@ class SurrogatePredictor:
         self.model.load_state_dict(torch.load(model_dir / "model.pt", weights_only=True))
         self.model.eval()
 
-    def predict(self, x: np.ndarray) -> np.ndarray:
+    def predict(self, x: ArrayLike) -> np.ndarray:
         """x: (n, 29) na ordem de self.inputs -> (n, 3) com LE, LR, AL."""
         x = np.atleast_2d(np.asarray(x, dtype=float))
         with torch.no_grad():

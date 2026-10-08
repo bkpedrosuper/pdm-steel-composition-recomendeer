@@ -4,7 +4,10 @@ Cada indivíduo é uma configuração com as 29 entradas (química + processo), 
 mínimo/máximo do treino. Os 3 objetivos são as distâncias relativas entre a propriedade
 prevista e o alvo pedido pelo engenheiro (LE, LR, AL).
 
-Uso: python -m pdm.optimize --LE 355 --LR 243 --AL 38.1
+Uso:
+    python -m pdm.optimize --LE 243 --LR 355 --AL 38.1                              # modelo local
+    python -m pdm.optimize --LE 243 --LR 355 --AL 38.1 --model models:/pdm-surrogate/3
+    python -m pdm.optimize --LE 243 --LR 355 --AL 38.1 --model models:/pdm-surrogate@champion
 """
 import argparse
 
@@ -48,6 +51,8 @@ def recommend(predictor: SurrogatePredictor, target: dict[str, float], cfg: dict
     res = minimize(SteelDesignProblem(predictor, t), method, ("n_gen", ocfg["n_gen"]),
                    seed=cfg["seed"], verbose=False)
 
+    if res.X is None:
+        raise RuntimeError("o otimizador não encontrou soluções")
     X = np.atleast_2d(res.X)
     pred = predictor.predict(X)
     out = pd.DataFrame(X, columns=predictor.inputs)
@@ -64,10 +69,13 @@ def main() -> None:
     parser.add_argument("--LR", type=float, required=True)
     parser.add_argument("--AL", type=float, required=True)
     parser.add_argument("--algorithm", choices=["rvea", "nsga3"])
+    parser.add_argument("--model", help="artifacts/model (padrão), models:/pdm-surrogate/3, "
+                                        "models:/pdm-surrogate@champion ou s3://.../model.tar.gz")
     args = parser.parse_args()
 
     cfg = load_config()
-    predictor = SurrogatePredictor()
+    predictor = SurrogatePredictor(args.model)
+    print(f"surrogate: {args.model or 'artifacts/model'}")
     target = {"LE": args.LE, "LR": args.LR, "AL": args.AL}
     for w in predictor.domain_check(target):
         print("AVISO:", w)

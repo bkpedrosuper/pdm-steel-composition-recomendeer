@@ -28,7 +28,7 @@ as propriedades pedidas pelo engenheiro.
 | Treino | `src/pdm/trainer.py` | Escalonadores ajustados só no treino, Adam, early stopping com corridas separadas |
 | Validação | `src/pdm/cv.py` | `StratifiedGroupKFold`: a mesma corrida nunca cai em treino e teste, e a proporção de tipos de aço é mantida |
 | Métricas | `src/pdm/metrics.py` | R², MAE, MAPE e acurácia = 1 − MAE/média, geral e por tipo de aço |
-| Registro | `src/pdm/register.py` + `db.py` | MLflow e tabela `runs(run_id, data, tipo_aco, saida, r2, mae, mape, acuracia_mae, tempo_treino, versao_dados, versao_modelo)` |
+| Registro | `src/pdm/register.py` + `mlflow_model.py` + `db.py` | Run e nova versão no Model Registry (`models:/pdm-surrogate/<n>`) e tabela `runs(run_id, data, tipo_aco, saida, r2, mae, mape, acuracia_mae, tempo_treino, versao_dados, versao_modelo)` |
 | Surrogate | `src/pdm/predictor.py` | Carrega o modelo (pasta local ou S3), prevê e avisa quando o pedido está fora do domínio de treino |
 | Otimizador | `src/pdm/optimize.py` | Problema pymoo: 29 variáveis limitadas ao domínio e 3 objetivos (erro relativo a LE, LR e AL) |
 | API | `api/main.py` | FastAPI: `/health`, `/predict`, `/recommend` |
@@ -38,11 +38,11 @@ as propriedades pedidas pelo engenheiro.
 ```bash
 python -m venv .venv && .venv/Scripts/activate      # Linux/Mac: source .venv/bin/activate
 pip install -r requirements.txt
-export PYTHONPATH=src:.
+pip install -e .                         # instala o pacote pdm (dispensa PYTHONPATH)
 
 python -m pdm.data                       # data/processed/steel.parquet
 python -m pdm.train                      # CV + modelo final em artifacts/model
-python -m pdm.register artifacts/model   # MLflow (mlflow.db) + tabela runs (artifacts/metrics.db)
+python -m pdm.register artifacts/model   # run + NOVA VERSÃO do modelo pdm-surrogate no MLflow + tabela runs
 python -m pdm.optimize --LE 355 --LR 243 --AL 38.1     # recomendação via RVEA
 pytest
 

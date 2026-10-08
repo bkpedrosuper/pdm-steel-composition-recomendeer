@@ -1,14 +1,44 @@
-"""Resolve onde está o modelo: pasta local ou model.tar.gz no S3 (saída do job da SageMaker)."""
+"""Resolve onde está o modelo. Aceita três formas de URI:
+
+    artifacts/model                        pasta local (saída do pdm.train)
+    s3://bucket/.../model.tar.gz           saída do job da SageMaker
+    models:/pdm-surrogate/3                versão registrada no MLflow
+    models:/pdm-surrogate@champion         versão apontada por um alias no MLflow
+"""
+import os
 import tarfile
 import tempfile
 from pathlib import Path
 
+from pdm import REPO_ROOT
+
+MODEL_NAME = "pdm-surrogate"   # nome do modelo no MLflow Model Registry
+
+
+def tracking_uri() -> str:
+    """MLflow em uso: $MLFLOW_TRACKING_URI ou o sqlite local do repo."""
+    return os.environ.get("MLFLOW_TRACKING_URI", f"sqlite:///{(REPO_ROOT / 'mlflow.db').as_posix()}")
+
 
 def resolve_model_dir(uri: str | Path) -> Path:
     uri = str(uri)
-    if not uri.startswith("s3://"):
-        return Path(uri)
+    if uri.startswith("models:/"):
+        return _from_mlflow(uri)
+    if uri.startswith("s3://"):
+        return _from_s3(uri)
+    return Path(uri)
 
+
+def _from_mlflow(uri: str) -> Path:
+    import mlflow
+    from mlflow.artifacts import download_artifacts
+
+    mlflow.set_tracking_uri(tracking_uri())
+    local = Path(download_artifacts(artifact_uri=uri))
+    return local / "artifacts" / "model"   # onde o pdm.register guardou os arquivos do surrogate
+
+
+def _from_s3(uri: str) -> Path:
     import boto3
 
     bucket, key = uri.removeprefix("s3://").split("/", 1)

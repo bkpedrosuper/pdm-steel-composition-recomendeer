@@ -43,5 +43,5 @@ def save_run_metrics(rows: pd.DataFrame) -> int:
     metadata.create_all(engine)
     cols = [c.name for c in runs.columns if c.name != "id"]
     with engine.begin() as conn:
-        conn.execute(runs.insert(), rows[cols].to_dict(orient="records"))
+        conn.execute(runs.insert(), rows.loc[:, cols].to_dict(orient="records"))
     return len(rows)

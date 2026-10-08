@@ -44,8 +44,8 @@ def main() -> None:
 
     start = time.time()
     report, _ = cross_validate(df, cfg)
-    summary = (report.groupby(["tipo_aco", "saida"], sort=False)
-               [["r2", "mae", "mape", "acuracia_mae"]].mean().reset_index())
+    metric_cols = ["r2", "mae", "mape", "acuracia_mae"]
+    summary = pd.DataFrame(report.groupby(["tipo_aco", "saida"], sort=False)[metric_cols].mean()).reset_index()
 
     trainer = Trainer(cfg).fit(df)
     trainer.save(args.model_dir, df)
@@ -66,7 +66,7 @@ def main() -> None:
                                                     encoding="utf-8")
 
     print("\nValidação cruzada, média dos folds (todos os aços):")
-    print(summary[summary.tipo_aco == "ALL"].round(3).to_string(index=False))
+    print(summary.loc[summary["tipo_aco"] == "ALL"].round(3).to_string(index=False))
     print(f"\nmodelo + metrics.json em {args.model_dir} ({elapsed:.0f}s)")
 
 

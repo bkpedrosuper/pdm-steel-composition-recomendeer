@@ -9,6 +9,7 @@ import hashlib
 import os
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 from pdm import REPO_ROOT, load_config
@@ -26,7 +27,8 @@ class SteelData:
         data = pd.read_csv(self.raw_dir / f"df_{split}.csv")
         aux = pd.read_csv(self.raw_dir / f"aux_{split}.csv", encoding="latin1")
         # dados e aux foram exportados na mesma ordem; a coluna sem nome é o índice comum
-        assert (data["Unnamed: 0"].values == aux["Unnamed: 0"].values).all(), "dados e aux desalinhados"
+        aligned = np.array_equal(data["Unnamed: 0"].to_numpy(), aux["Unnamed: 0"].to_numpy())
+        assert aligned, "dados e aux desalinhados"
         return pd.concat([data, aux[["Corrida", "Tipo"]]], axis=1)
 
     @staticmethod
@@ -41,7 +43,7 @@ class SteelData:
         df["tipo"] = df["Tipo"].map(self.cfg["steel_type_map"])
         df["corrida_id"] = df["Corrida"].map(self._anonymize)
 
-        df = df[cols["inputs"] + cols["targets"] + ["tipo", "corrida_id"]]
+        df = df.loc[:, cols["inputs"] + cols["targets"] + ["tipo", "corrida_id"]]
         df = df.dropna().drop_duplicates().reset_index(drop=True)
         return df
 

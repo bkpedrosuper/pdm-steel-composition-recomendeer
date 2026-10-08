@@ -1,0 +1,5 @@
+Metadata-Version: 2.4
+Name: pdm-remake
+Version: 0.1.0
+Summary: Surrogate de propriedades mecânicas do aço + otimizador multiobjetivo, com deploy na AWS
+Requires-Python: >=3.11

@@ -1,22 +1,34 @@
-"""Registra um treino: MLflow (params, métricas, artefatos) + tabela `runs` (lida pelo Power BI).
+"""Registra um treino no MLflow e na tabela `runs` (lida pelo Power BI).
+
+No MLflow: um run (params + métricas de CV) e uma NOVA VERSÃO do modelo `pdm-surrogate`
+no Model Registry (v1, v2, ...). Na tabela runs: uma linha por tipo de aço x saída.
 
 Uso:
     python -m pdm.register artifacts/model                       # treino local
     python -m pdm.register s3://bucket/jobs/<job>/output/model.tar.gz   # job da SageMaker
 
-MLFLOW_TRACKING_URI: servidor MLflow (padrão: sqlite local)
-DATABASE_URL:        Postgres/RDS da tabela runs (padrão: sqlite local)
+MLFLOW_TRACKING_URI: servidor MLflow (padrão: sqlite local, mlflow.db)
+DATABASE_URL:        Postgres/RDS da tabela runs (padrão: sqlite local, artifacts/metrics.db)
 """
 import argparse
 import json
-import os
 
 import mlflow
 import pandas as pd
+from mlflow.models import infer_signature
+from mlflow.pyfunc import log_model
 
-from pdm import REPO_ROOT
-from pdm.artifacts import resolve_model_dir
+from pdm import PACKAGE_DIR
+from pdm.artifacts import MODEL_NAME, resolve_model_dir, tracking_uri
 from pdm.db import save_run_metrics
+from pdm.mlflow_model import SurrogatePyfunc
+
+
+def input_example(model_dir) -> pd.DataFrame:
+    """Uma linha no meio do domínio de treino: documenta o formato de entrada no MLflow."""
+    meta = json.loads((model_dir / "meta.json").read_text(encoding="utf-8"))
+    lo, hi = meta["domain"]["min"], meta["domain"]["max"]
+    return pd.DataFrame([{c: (lo[c] + hi[c]) / 2 for c in meta["inputs"]}])
 
 
 def register(model_uri: str) -> str:
@@ -24,23 +36,36 @@ def register(model_uri: str) -> str:
     m = json.loads((model_dir / "metrics.json").read_text(encoding="utf-8"))
     summary = pd.DataFrame(m["cv_summary"])
 
-    mlflow.set_tracking_uri(os.environ.get("MLFLOW_TRACKING_URI",
-                                           f"sqlite:///{(REPO_ROOT / 'mlflow.db').as_posix()}"))
+    mlflow.set_tracking_uri(tracking_uri())
     mlflow.set_experiment("pdm-surrogate")
     with mlflow.start_run() as run:
         mlflow.log_params({**m["params"], "n_linhas": m["n_linhas"], "versao_dados": m["versao_dados"],
-                           "origem": model_uri})
+                           "origem": str(model_uri)})
         mlflow.log_metric("tempo_treino_s", m["tempo_treino"])
-        for r in summary.itertuples():
+        for r in summary.to_dict(orient="records"):
             for metric in ["r2", "mae", "mape", "acuracia_mae"]:
-                mlflow.log_metric(f"cv_{r.tipo_aco}_{r.saida}_{metric}", getattr(r, metric))
-        mlflow.log_artifacts(str(model_dir), artifact_path="model")
+                mlflow.log_metric(f"cv_{r['tipo_aco']}_{r['saida']}_{metric}", r[metric])
+
+        example = input_example(model_dir)
+        wrapper = SurrogatePyfunc()
+        wrapper.load_context(type("Ctx", (), {"artifacts": {"model_dir": str(model_dir)}})())
+        info = log_model(
+            name="model",
+            python_model=str(PACKAGE_DIR / "mlflow_model.py"),
+            artifacts={"model_dir": str(model_dir)},
+            code_paths=[str(PACKAGE_DIR)],
+            signature=infer_signature(example, wrapper.predict(None, example)),
+            input_example=example,
+            pip_requirements=["torch", "scikit-learn", "pandas", "joblib", "pyyaml"],
+            registered_model_name=MODEL_NAME,
+        )
+    version = info.registered_model_version
 
     rows = summary.assign(run_id=run.info.run_id, data=pd.Timestamp(m["data"]).to_pydatetime(),
                           tempo_treino=m["tempo_treino"], versao_dados=m["versao_dados"],
-                          versao_modelo=run.info.run_id)
+                          versao_modelo=f"{MODEL_NAME}/v{version}")
     n = save_run_metrics(rows)
-    print(f"run {run.info.run_id} registrado no MLflow; {n} linhas na tabela runs")
+    print(f"\nrun {run.info.run_id} -> modelo {MODEL_NAME} versão {version}; {n} linhas na tabela runs")
     return run.info.run_id
 
 
