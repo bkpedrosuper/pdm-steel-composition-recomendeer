@@ -18,7 +18,9 @@ ssh -o StrictHostKeyChecking=accept-new -i infra/pdm-key.pem "ec2-user@$EC2_IP" 
 set -e
 cd /opt/pdm
 git pull -q --ff-only
-docker compose -f docker-compose.aws.yml exec -T api python -m pdm.promote $VERSION $EXTRA </dev/null
+# o código vai dentro da imagem: sem rebuild, o container rodaria a versão antiga do código
+docker compose -f docker-compose.aws.yml build -q api </dev/null
+docker compose -f docker-compose.aws.yml run -T --rm --no-deps api python -m pdm.promote $VERSION $EXTRA </dev/null
 case " $EXTRA " in *" --dry-run "*) exit 0 ;; esac
 sed -i "s|^PDM_MODEL_URI=.*|PDM_MODEL_URI=models:/pdm-surrogate@champion|" .env
 docker compose -f docker-compose.aws.yml up -d --force-recreate api </dev/null 2>&1 | tail -1
