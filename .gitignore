@@ -1,0 +1,16 @@
+# dados da ArcelorMittal são confidenciais: nunca vão para o repositório
+data/
+*.csv
+*.parquet
+
+# saídas de treino
+artifacts/
+mlruns/
+mlflow.db
+
+.venv/
+__pycache__/
+.pytest_cache/
+.env
+infra/.aws_outputs
+infra/*.pem

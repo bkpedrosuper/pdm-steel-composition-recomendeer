@@ -1,0 +1,48 @@
+# Configuração única do projeto. Caminhos relativos à raiz do repositório.
+
+data:
+  raw_dir: ../PDM/models/model0          # dados originais (fora do repo, confidenciais)
+  processed_path: data/processed/steel.parquet
+
+columns:
+  inputs: ["Esp Real", "Red Frio", "Larg Real", "TRPL", "TB", "TA",
+           "C", "Mn", "P", "Si", "S", "Ni", "Al", "Cr", "Nb", "Mo", "Ti", "V", "B", "N",
+           "Forno-Veloc", "SPM Med", "P3 Med", "P4 Med", "P10 Med", "P12 Med",
+           "P13 Med", "P15 Med", "P16 Med"]
+  raw_targets: ["LE_T hist", "LR_T hist", "AL_T hist"]
+  targets: ["LE", "LR", "AL"]            # limite de escoamento, resistência, alongamento
+  group: corrida_id                      # corridas nunca se dividem entre folds
+  strata: tipo                           # proporção de cada tipo de aço igual em todos os folds
+
+steel_type_map:                          # nomes do aux -> 4 grupos do artigo
+  BH-PD: BH
+  IF-DX: IF
+  HSLA: HSLA
+  DP-TRIP: DP-TRIP
+
+seed: 42
+
+cv:
+  n_folds: 5
+
+model:
+  hidden: [128, 64]
+  dropout: 0.05
+
+train:
+  lr: 0.001
+  batch_size: 256
+  max_epochs: 300
+  patience: 20
+  early_stop_frac: 0.1                   # fração de corridas do treino usada para early stopping
+
+optimizer:
+  algorithm: rvea                        # rvea | nsga3
+  n_partitions: 12                       # 3 objetivos, 12 partições -> 91 direções = tamanho da população
+  n_gen: 100
+  top_n: 5
+
+aws:
+  region: us-east-1
+  bucket: pdm-remake-CHANGE-ME           # sobrescrito por PDM_BUCKET
+  data_key: data/steel.parquet

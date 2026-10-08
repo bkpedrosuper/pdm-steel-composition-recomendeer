@@ -1,0 +1,24 @@
+# Roda na EC2. Variáveis vêm de /opt/pdm/.env (gerado pelo user data):
+#   RDS_HOST, DB_PASSWORD, BUCKET, AWS_DEFAULT_REGION, PDM_MODEL_URI
+services:
+  mlflow:
+    build: { context: ., dockerfile: Dockerfile.mlflow }
+    restart: unless-stopped
+    command: >
+      mlflow server --host 0.0.0.0 --port 5000
+      --backend-store-uri postgresql+psycopg2://pdmadmin:${DB_PASSWORD}@${RDS_HOST}:5432/mlflow
+      --artifacts-destination s3://${BUCKET}/mlflow --serve-artifacts
+    environment:
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION}
+    ports: ["5000:5000"]
+
+  api:
+    build: .
+    restart: unless-stopped
+    environment:
+      PDM_MODEL_URI: ${PDM_MODEL_URI}
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      DATABASE_URL: postgresql+psycopg2://pdmadmin:${DB_PASSWORD}@${RDS_HOST}:5432/pdm
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION}
+    ports: ["8000:8000"]
+    depends_on: [mlflow]

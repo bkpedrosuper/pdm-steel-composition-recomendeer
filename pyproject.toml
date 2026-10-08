@@ -1,0 +1,9 @@
+[project]
+name = "pdm-remake"
+version = "0.1.0"
+description = "Surrogate de propriedades mecânicas do aço + otimizador multiobjetivo, com deploy na AWS"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+pythonpath = ["src", "."]
+testpaths = ["tests"]

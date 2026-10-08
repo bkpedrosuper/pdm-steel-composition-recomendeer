@@ -1,0 +1,6 @@
+# instalado automaticamente pelo container de treino da SageMaker (torch já vem na imagem)
+pandas
+pyarrow
+scikit-learn
+pyyaml
+joblib
