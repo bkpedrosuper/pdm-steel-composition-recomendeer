@@ -79,9 +79,11 @@ def main() -> None:
 
     client.set_registered_model_alias(MODEL_NAME, args.alias, version)
     print()
+    # a busca de versões não traz aliases; o modelo registrado traz {alias: versão}
+    aliases = client.get_registered_model(MODEL_NAME).aliases or {}
     for v in sorted(client.search_model_versions(f"name='{MODEL_NAME}'"), key=lambda v: int(v.version)):
-        aliases = " ".join(f"@{a}" for a in (v.aliases or []))
-        print(f"versão {v.version} (run {(v.run_id or '')[:8]}) {aliases}")
+        tags = " ".join(f"@{a}" for a, ver in aliases.items() if str(ver) == str(v.version))
+        print(f"versão {v.version} (run {(v.run_id or '')[:8]}) {tags}")
 
 
 if __name__ == "__main__":
