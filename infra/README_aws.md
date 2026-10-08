@@ -52,7 +52,7 @@ bash infra/teardown.sh
 
 | Recurso | Preço | Observação |
 |---|---|---|
-| EC2 t3.small | ~US$ 0,02/h | ~US$ 0,50/dia ligado |
+| EC2 t3.micro | ~US$ 0,0104/h | free tier (750 h/mês no 1º ano); fora dele ~US$ 0,25/dia |
 | RDS db.t4g.micro | ~US$ 0,016/h | free tier nos 12 primeiros meses |
 | SageMaker ml.m5.large | ~US$ 0,115/h | cobra só os minutos do job |
 | S3 | centavos | poucos MB |

@@ -5,11 +5,13 @@ services:
     build: { context: ., dockerfile: Dockerfile.mlflow }
     restart: unless-stopped
     command: >
-      mlflow server --host 0.0.0.0 --port 5000
+      mlflow server --host 0.0.0.0 --port 5000 --workers 1
       --backend-store-uri postgresql+psycopg2://pdmadmin:${DB_PASSWORD}@${RDS_HOST}:5432/mlflow
       --artifacts-destination s3://${BUCKET}/mlflow --serve-artifacts
     environment:
       AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION}
+      # MLflow 3 só aceita Host localhost/IP privado por padrão; aqui a proteção é o security group
+      MLFLOW_SERVER_ALLOWED_HOSTS: "*"
     ports: ["5000:5000"]
 
   api:

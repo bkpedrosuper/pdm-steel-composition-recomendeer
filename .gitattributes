@@ -1,0 +1,4 @@
+# scripts executados no bash/Linux precisam de LF
+*.sh   text eol=lf
+*.yml  text eol=lf
+Dockerfile* text eol=lf

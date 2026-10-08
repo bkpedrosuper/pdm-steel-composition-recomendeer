@@ -20,6 +20,8 @@ services:
       mlflow server --host 0.0.0.0 --port 5000
       --backend-store-uri postgresql+psycopg2://pdm:pdm@postgres:5432/mlflow
       --artifacts-destination /mlartifacts --serve-artifacts
+    environment:
+      MLFLOW_SERVER_ALLOWED_HOSTS: "*"   # MLflow 3 bloqueia Host fora de localhost/IP privado
     volumes: [mlartifacts:/mlartifacts]
     ports: ["5000:5000"]
     depends_on: [postgres]

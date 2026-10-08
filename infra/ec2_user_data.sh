@@ -2,6 +2,10 @@
 # User data da EC2 (Amazon Linux 2023). Os marcadores __X__ são preenchidos pelo setup_aws.sh.
 set -euxo pipefail
 
+# t3.micro tem só 1 GB de RAM: 2 GB de swap evitam falta de memória no build com PyTorch
+fallocate -l 2G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile
+echo '/swapfile none swap sw 0 0' >> /etc/fstab
+
 dnf install -y docker git
 systemctl enable --now docker
 usermod -aG docker ec2-user

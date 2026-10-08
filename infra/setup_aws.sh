@@ -5,7 +5,7 @@
 # com DB_PASSWORD (senha do RDS) e REPO_URL (repo público no GitHub, clonado pela EC2).
 #
 # Cria: bucket S3, papéis IAM (SageMaker e EC2), security groups, RDS Postgres (db.t4g.micro),
-#       par de chaves e uma EC2 t3.small que sobe o MLflow. Saídas em infra/.aws_outputs.
+#       par de chaves e uma EC2 t3.micro (free tier) que sobe o MLflow. Saídas em infra/.aws_outputs.
 set -euo pipefail
 source infra/load_env.sh
 
@@ -88,8 +88,9 @@ USER_DATA=$(sed -e "s|__REPO_URL__|$REPO_URL|" -e "s|__BUCKET__|$BUCKET|" -e "s|
 INSTANCE=$(aws ec2 describe-instances --filters Name=tag:Name,Values=pdm-server Name=instance-state-name,Values=pending,running \
            --query 'Reservations[0].Instances[0].InstanceId' --output text)
 if [ "$INSTANCE" = "None" ]; then
-  INSTANCE=$(aws ec2 run-instances --image-id "$AMI" --instance-type t3.small --key-name pdm-key \
+  INSTANCE=$(aws ec2 run-instances --image-id "$AMI" --instance-type t3.micro --key-name pdm-key \
     --security-group-ids "$EC2_SG" --iam-instance-profile Name=pdm-ec2-profile \
+    --metadata-options 'HttpTokens=required,HttpPutResponseHopLimit=2' \
     --block-device-mappings 'DeviceName=/dev/xvda,Ebs={VolumeSize=30}' \
     --user-data "$USER_DATA" --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=pdm-server}]' \
     --query 'Instances[0].InstanceId' --output text)
